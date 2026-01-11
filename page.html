@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sign Language Recognition</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.12.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+  <style>
+    video, canvas {
+      position: absolute;
+      left: 0; top: 0;
+      width: 640px;
+      height: 480px;
+    }
+    #prediction {
+      position: absolute;
+      top: 10px; left: 10px;
+      font-size: 2em;
+      color: lime;
+      background-color: rgba(0,0,0,0.5);
+      padding: 5px 10px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <video id="webcam" autoplay></video>
+  <canvas id="canvas"></canvas>
+  <div id="prediction">...</div>
+
+  <script>
+    let model;
+    const letters = ["A","B","C"]; // Add all letters you trained
+
+    async function loadModel() {
+      model = await tf.loadLayersModel('tfjs_model/model.json');
+      console.log("Model loaded!");
+    }
+
+    loadModel();
+
+    const videoElement = document.getElementById('webcam');
+    const canvasElement = document.getElementById('canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    const predictionDiv = document.getElementById('prediction');
+
+    const hands = new Hands({locateFile: (file) => {
+      return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+    }});
+
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.7,
+      minTrackingConfidence: 0.7
+    });
+
+    hands.onResults(onResults);
+
+    // Setup camera
+    const camera = new Camera(videoElement, {
+      onFrame: async () => {
+        await hands.send({image: videoElement});
+      },
+      width: 640,
+      height: 480
+    });
+    camera.start();
+
+    function onResults(results) {
+      // Draw the video frame
+      canvasCtx.save();
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        const landmarks = results.multiHandLandmarks[0];
+
+        // Draw landmarks
+        drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 2});
+        drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 1});
+
+        // Prepare data for model: flatten [x,y,z]
+        const input = landmarks.flatMap(lm => [lm.x, lm.y, lm.z]);
+        const tensor = tf.tensor([input]);
+
+        if (model) {
+          const pred = model.predict(tensor);
+          const classId = pred.argMax(1).dataSync()[0];
+          const letter = letters[classId];
+          predictionDiv.innerText = letter;
+        }
+
+        tensor.dispose();
+      }
+      canvasCtx.restore();
+    }
+  </script>
+</body>
+</html>
