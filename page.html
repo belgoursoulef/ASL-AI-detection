@@ -32,7 +32,7 @@
 
   <script>
     let model;
-    const letters = ["A","B","C"]; // Add all letters you trained
+    const letters = ["A","B","C"]; 
 
     async function loadModel() {
       model = await tf.loadLayersModel('tfjs_model/model.json');
@@ -59,7 +59,7 @@
 
     hands.onResults(onResults);
 
-    // Setup camera
+
     const camera = new Camera(videoElement, {
       onFrame: async () => {
         await hands.send({image: videoElement});
@@ -70,7 +70,7 @@
     camera.start();
 
     function onResults(results) {
-      // Draw the video frame
+  
       canvasCtx.save();
       canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
       canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
@@ -78,11 +78,11 @@
       if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
         const landmarks = results.multiHandLandmarks[0];
 
-        // Draw landmarks
+      
         drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 2});
         drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 1});
 
-        // Prepare data for model: flatten [x,y,z]
+       
         const input = landmarks.flatMap(lm => [lm.x, lm.y, lm.z]);
         const tensor = tf.tensor([input]);
 
@@ -100,3 +100,4 @@
   </script>
 </body>
 </html>
+
